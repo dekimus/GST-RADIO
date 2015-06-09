@@ -9,21 +9,29 @@ import time
 from Tkinter import *
 
 #Lista con las emisoras
-emisoras = [("Cadena Ser Alicante", 1),("Radio Paradise 192k", 2),
-             ("Radio Express Marca", 3), ("Cadena Ser Elche     ", 4)]
+emisoras = [("Cadena Ser Alicante   ", 1),("Radio  Paradise    96k ", 2),
+             ("Radio Express  Marca   ", 3), ("Cadena Ser Elche [bug]", 4)]
+
+
+emisorasUrl = [("Cadena Ser Alicante   ", 'http://playerservices.streamtheworld.com/api/livestream-redirect/SER_ALICANTE.mp3'),
+              ("Radio  Paradise    96k ", 'http://stream-tx3.radioparadise.com/rp_96.ogg'),
+              ("Radio Express  Marca   ", 'rtmp://teledifusion.tv/teleelxradio/teleelxradiolive'),
+              ("Cadena Ser Elche [bug]", 'mms://94.127.190.245/radioelche')]
 
 #emisora por defecto
-streamUri = 'http://playerservices.streamtheworld.com/api/livestream-redirect/SER_ALICANTE.mp3'
+streamUri = 'http://stream-tx3.radioparadise.com/rp_96.ogg'
 
 #volumen inicial
-volume = 3
+volume = 1
 
 
 #ventana principal de la aplicacion
 ventana = Tk()
-ventana.geometry("450x300")
+ventana.geometry("420x250")
 ventana.title("GST-RADIO v1.2")
 texto = Label(ventana, text="GST-RADIO ", font=('times', 15, "bold")).grid(row=0, column=0)
+
+
 
 
 #funciones basicas del reproductor
@@ -43,7 +51,6 @@ def vol_up():
         volume += 0.5
         player.set_property("volume", volume)
 
-
 def vol_down():
     global volume
 
@@ -51,13 +58,40 @@ def vol_down():
         volume -= 0.5
         player.set_property("volume", volume)
 
+def abrirurl():
+    global urlV, newurl
 
+    urlV = StringVar()
+    newurl = Toplevel(ventana)
+    newurl.title("Nueva Url")
+    newurlTxt = Label(newurl, text="Introduce la nueva url...").grid()
+    newurlEntry = Entry(newurl, width=50, textvariable=urlV).grid()
+    accept = Button(newurl, text="Enviar", command=cargarUrl).grid()
+
+
+def cargarUrl():
+
+    global v, newurl, emisorasUrl
+    newUri = urlV.get()
+    player.set_state(gst.STATE_NULL)
+    player.set_property("uri", newUri)
+    player.set_state(gst.STATE_PLAYING)
+    v.set(None)
+    newurl.destroy()
+
+
+def listaUrl(new):
+
+    player.set_state(gst.STATE_NULL)
+    player.set_property("uri", new)
+    player.set_state(gst.STATE_PLAYING)
 
 def on_tag(bus, msg):
+
     taglist = msg.parse_tag()
     print 'on_tag:'
     for key in taglist.keys():
-        print '\t%s = %s' % (key, taglist[key])
+       print '\t%s = %s' % (key, taglist[key])
 
 
 #crea una lista de reproduccion de la Url
@@ -98,23 +132,36 @@ volUp.grid(row=1, column=3)
 volDown = Button(ventana, text="Vol Down", width=10, highlightcolor="red", command=vol_down)
 volDown.grid(row=2, column=3)
 
-#Entry de la url
-urlv = StringVar()
-newUrl = Entry(ventana, text="¿Tienes una Url?", textvariable=urlv)
-newUrl.grid(row=5)
-newUrltxt = Label(ventana, text="\n Tienes una Url?...").grid(row=4)
+txtVol = Label(ventana, font=('times', 10, "bold"))
+txtVol.grid(row=0, column=3)
 
+# barra principal
+barraMenu = Menu(ventana)
+
+# Menu archivo
+menuArchivo = Menu(barraMenu, tearoff=0)
+menuArchivo.add_command(label="Abrir Url", command=abrirurl)
+menuArchivo.add_separator()
+menuArchivo.add_command(label="Salir", command=ventana.quit)
+barraMenu.add_cascade(label="Archivo", menu=menuArchivo)
+
+# Menu Emisoras
+menuEmisoras = Menu(barraMenu, tearoff=0)
+for emi, url in emisorasUrl:
+    menuEmisoras.add_command(label=emi+" :  " + url, command= lambda  i=url: listaUrl(i))
+
+barraMenu.add_cascade(label="Emisoras", menu=menuEmisoras)
 
 #funcion para actualizar la hora y el volumen.
 def hora():
     """muestra la hora actual"""
+
     tiempo2 = time.strftime('%H:%M:%S')
     tiempo = ''
     if tiempo2 != tiempo:
         tiempo = tiempo2
         reloj.config(text=tiempo)
-
-    txtVol = Label(ventana, text="Volumen: "+ str(volume), font=('times', 10, "bold")).grid(row=0, column=3)
+    txtVol.config(text="Volumen: "+str(volume))
     reloj.after(100, hora)
 
 #funcion para la seleccion de emisoras
@@ -125,7 +172,7 @@ def select():
         player.set_property('uri', streamUri)
         player.set_state(gst.STATE_PLAYING)
     elif v.get() == 2:
-        streamUri = 'http://stream-uk1.radioparadise.com/mp3-192'
+        streamUri = 'http://stream-tx3.radioparadise.com/rp_96.ogg'
         player.set_property('uri', streamUri)
         player.set_state(gst.STATE_PLAYING)
     elif v.get() == 3:
@@ -137,6 +184,7 @@ def select():
         player.set_property('uri', streamUri)
         player.set_state(gst.STATE_PLAYING)
 
+
 v = IntVar()
 
 
@@ -144,8 +192,12 @@ v = IntVar()
 def __main__():
     for emi, nume in emisoras:
         Radiobutton(ventana, text=emi, variable=v, command=select, val=nume).grid(column=1)
-
+    player.set_state(gst.STATE_PLAYING)
     hora()
+
     ventana.mainloop()
 
+player.set_state(gst.STATE_PLAYING)
+v.set(2)
+ventana.config(menu=barraMenu)
 __main__()
