@@ -4,7 +4,7 @@
 #Requiere gstreamer0.10-ffmpeg para los WMA
 #
 
-import pygst, gst
+import pygst, gst, tkFileDialog
 import time
 from Tkinter import *
 
@@ -14,9 +14,13 @@ emisoras = [("Cadena Ser Alicante   ", 1),("Radio  Paradise    96k ", 2),
 
 
 emisorasUrl = [("Cadena Ser Alicante   ", 'http://playerservices.streamtheworld.com/api/livestream-redirect/SER_ALICANTE.mp3'),
-              ("Radio  Paradise    96k ", 'http://stream-tx3.radioparadise.com/rp_96.ogg'),
-              ("Radio Express  Marca   ", 'rtmp://teledifusion.tv/teleelxradio/teleelxradiolive'),
-              ("Cadena Ser Elche [bug]", 'mms://94.127.190.245/radioelche')]
+               ("Radio  Paradise    96k ", 'http://stream-tx3.radioparadise.com/rp_96.ogg'),
+               ("Radio Express  Marca  ", 'rtmp://teledifusion.tv/teleelxradio/teleelxradiolive'),
+               ("Cadena Ser Elche       ", 'mms://94.127.190.245/radioelche'),
+               ("Rock satelite madrid  ", 'http://listen128.radionomy.com/rocksatelitemadridone'),
+               ("Onda Melodia", 'http://streaming.radionomy.com/onda-melodia'),
+               ("UMH Radio", 'http://193.147.145.101:1252'),
+               ("Radio Podcastellano", 'http://vps84666.ovh.net:8000/mpd')]
 
 #emisora por defecto
 streamUri = 'http://stream-tx3.radioparadise.com/rp_96.ogg'
@@ -28,7 +32,7 @@ volume = 1
 #ventana principal de la aplicacion
 ventana = Tk()
 ventana.geometry("420x250")
-ventana.title("GST-RADIO v1.2")
+ventana.title("GST-RADIO v1.35")
 texto = Label(ventana, text="GST-RADIO ", font=('times', 15, "bold")).grid(row=0, column=0)
 
 
@@ -59,24 +63,28 @@ def vol_down():
         player.set_property("volume", volume)
 
 def abrirurl():
-    global urlV, newurl
 
+    """ Ventana de la nueva Url introducida manualmente """
+
+    global urlV, newurl
     urlV = StringVar()
     newurl = Toplevel(ventana)
     newurl.title("Nueva Url")
-    newurlTxt = Label(newurl, text="Introduce la nueva url...").grid()
-    newurlEntry = Entry(newurl, width=50, textvariable=urlV).grid()
-    accept = Button(newurl, text="Enviar", command=cargarUrl).grid()
+    Label(newurl, text="Introduce la nueva url...").grid()
+    Entry(newurl, width=50, textvariable=urlV).grid()
+    Button(newurl, text="Enviar", command=cargarUrl).grid()
 
 
 def cargarUrl():
 
-    global v, newurl, emisorasUrl
+    """ Carga la url introducida en el menu
+        de entrada manual"""
+
+    global newurl, emisorasUrl
     newUri = urlV.get()
     player.set_state(gst.STATE_NULL)
     player.set_property("uri", newUri)
     player.set_state(gst.STATE_PLAYING)
-    v.set(None)
     newurl.destroy()
 
 
@@ -93,6 +101,12 @@ def on_tag(bus, msg):
     for key in taglist.keys():
        print '\t%s = %s' % (key, taglist[key])
 
+def openLocal():
+
+    file = "file://"+tkFileDialog.askopenfilename(parent=ventana,title='Elige un archivo')
+    player.set_state(gst.STATE_NULL)
+    player.set_property("uri", file)
+    player.set_state(gst.STATE_PLAYING)
 
 #crea una lista de reproduccion de la Url
 player = gst.element_factory_make("playbin", "player")
@@ -141,6 +155,7 @@ barraMenu = Menu(ventana)
 # Menu archivo
 menuArchivo = Menu(barraMenu, tearoff=0)
 menuArchivo.add_command(label="Abrir Url", command=abrirurl)
+menuArchivo.add_command(label="Archivo local", command=openLocal)
 menuArchivo.add_separator()
 menuArchivo.add_command(label="Salir", command=ventana.quit)
 barraMenu.add_cascade(label="Archivo", menu=menuArchivo)
@@ -148,7 +163,7 @@ barraMenu.add_cascade(label="Archivo", menu=menuArchivo)
 # Menu Emisoras
 menuEmisoras = Menu(barraMenu, tearoff=0)
 for emi, url in emisorasUrl:
-    menuEmisoras.add_command(label=emi+" :  " + url, command= lambda  i=url: listaUrl(i))
+    menuEmisoras.add_command(label=emi, command= lambda  i=url: listaUrl(i))
 
 barraMenu.add_cascade(label="Emisoras", menu=menuEmisoras)
 
@@ -164,40 +179,13 @@ def hora():
     txtVol.config(text="Volumen: "+str(volume))
     reloj.after(100, hora)
 
-#funcion para la seleccion de emisoras
-def select():
-    player.set_state(gst.STATE_NULL)
-    if v.get() == 1:
-        streamUri = 'http://playerservices.streamtheworld.com/api/livestream-redirect/SER_ALICANTE.mp3'
-        player.set_property('uri', streamUri)
-        player.set_state(gst.STATE_PLAYING)
-    elif v.get() == 2:
-        streamUri = 'http://stream-tx3.radioparadise.com/rp_96.ogg'
-        player.set_property('uri', streamUri)
-        player.set_state(gst.STATE_PLAYING)
-    elif v.get() == 3:
-        streamUri = 'rtmp://teledifusion.tv/teleelxradio/teleelxradiolive'
-        player.set_property('uri', streamUri)
-        player.set_state(gst.STATE_PLAYING)
-    elif v.get() == 4:
-        streamUri = 'mms://94.127.190.245/radioelche'
-        player.set_property('uri', streamUri)
-        player.set_state(gst.STATE_PLAYING)
-
-
-v = IntVar()
-
 
 
 def __main__():
-    for emi, nume in emisoras:
-        Radiobutton(ventana, text=emi, variable=v, command=select, val=nume).grid(column=1)
-    player.set_state(gst.STATE_PLAYING)
-    hora()
 
+    hora()
     ventana.mainloop()
 
 player.set_state(gst.STATE_PLAYING)
-v.set(2)
 ventana.config(menu=barraMenu)
 __main__()
